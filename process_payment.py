@@ -1,44 +1,54 @@
 import serial
 import time
-import csv
 from datetime import datetime
+from db_utils import get_db_connection, update_payment_status
 
 # === CONFIG ===
 
-SERIAL_PORT = 'COM5'  # Change to your port
+SERIAL_PORT = 'COM6'  # Change to your port
 BAUD_RATE = 9600
-CSV_FILE = 'plates_log.csv'
-RATE_PER_HOUR = 200
+RATE_PER_HOUR = 500
 
 
 def find_latest_unpaid(plate):
-    with open(CSV_FILE, 'r', newline='') as f:
-        reader = csv.DictReader(f)
-        entries = [row for row in reader if
-                   row['Plate Number'].strip() == plate.strip() and row['Payment Status'] == '0']
-        if not entries:
+    """Find the latest unpaid entry for a plate number"""
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT id, plate_number, entry_time 
+                FROM plates 
+                WHERE plate_number = %s 
+                AND payment_status = 0 
+                ORDER BY entry_time DESC 
+                LIMIT 1
+                """,
+                (plate,)
+            )
+            result = cursor.fetchone()
+            if result:
+                return {
+                    'id': result[0],
+                    'plate_number': result[1],
+                    'entry_time': result[2]
+                }
             return None
-        latest = max(entries, key=lambda x: datetime.strptime(x['Timestamp'], "%Y-%m-%d %H:%M:%S"))
-        return latest
+        except Exception as e:
+            print(f"Error finding latest unpaid entry: {e}")
+            return None
+        finally:
+            if conn:
+                conn.close()
 
 
-def mark_as_paid(target_row):
-    rows = []
-    with open(CSV_FILE, 'r', newline='') as f:
-        reader = csv.DictReader(f)
-        rows = list(reader)
-
-    for row in rows:
-        if (row['Plate Number'] == target_row['Plate Number'] and
-                row['Timestamp'] == target_row['Timestamp'] and
-                row['Payment Status'] == '0'):
-            row['Payment Status'] = '1'
-            break
-
-    with open(CSV_FILE, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['Plate Number', 'Payment Status', 'Timestamp'])
-        writer.writeheader()
-        writer.writerows(rows)
+def mark_as_paid(entry, paid_amount):
+    """Mark an entry as paid in the database"""
+    if update_payment_status(entry['plate_number'], paid_amount):
+        print(f"Marked {entry['plate_number']} as paid with amount {paid_amount} RWF")
+        return True
+    return False
 
 
 def clean_plate(plate_raw):
@@ -77,10 +87,12 @@ def main():
                 ser.write(b'0\n')
                 continue
 
-            entry_time = datetime.strptime(entry['Timestamp'], "%Y-%m-%d %H:%M:%S")
+            entry_time = entry['entry_time']
             now = datetime.now()
-            duration = (now - entry_time).total_seconds() / 3600
-            due = int(RATE_PER_HOUR * max(1, round(duration)))
+            duration = round((now - entry_time).total_seconds() / 3600, 3) # Duration in hours, rounded to 3 decimal places
+
+            # Calculate due amount based on exact duration
+            due = int(duration * RATE_PER_HOUR)
 
             print(f"Due for {plate}: {due} RWF")
 
@@ -150,8 +162,10 @@ def main():
 
                 # Recalculate due with updated time
                 now = datetime.now()
-                duration = (now - entry_time).total_seconds() / 3600
-                due = int(RATE_PER_HOUR * max(1, round(duration)))
+                duration = round((now - entry_time).total_seconds() / 3600, 3) # Duration in hours, rounded to 3 decimal places
+
+                # Recalculate due amount based on exact duration
+                due = int(duration * RATE_PER_HOUR)
                 print(f"Updated due: {due} RWF")
 
             if balance >= due:
@@ -163,7 +177,8 @@ def main():
                         response = ser.readline().decode().strip()
                         if response == "done":
                             print("Payment successful!")
-                            mark_as_paid(entry)
+                            # Pass the calculated 'due' amount when marking as paid
+                            mark_as_paid(entry, due)
                             break
                         elif response == "insufficient":
                             print("Unexpected insufficient balance after top-up.")

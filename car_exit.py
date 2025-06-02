@@ -5,15 +5,15 @@ import os
 import time
 import serial
 import serial.tools.list_ports
-import csv
 from collections import Counter
 import random
+from db_utils import init_db, check_payment_status, log_exit, is_vehicle_registered, has_already_exited
 
-# Load YOLOv8 model (same model as entry)
+# Initialize database
+init_db()
+
+# Load YOLOv8 model
 model = YOLO('best.pt')
-
-# CSV log file
-csv_file = 'plates_log.csv'
 
 # ===== Auto-detect Arduino Serial Port =====
 def detect_arduino_port():
@@ -35,17 +35,6 @@ else:
 # ===== Ultrasonic Sensor (mock for now) =====
 def mock_ultrasonic_distance():
     return random.choice([random.randint(10, 40)] + [random.randint(60, 150)] * 10)
-
-# ===== Check payment status in CSV =====
-def is_payment_complete(plate_number):
-    if not os.path.exists(csv_file):
-        return False
-    with open(csv_file, 'r') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if row['Plate Number'] == plate_number and row['Payment Status'] == '1':
-                return True
-    return False
 
 # ===== Webcam and Main Loop =====
 cap = cv2.VideoCapture(0)
@@ -94,19 +83,54 @@ while True:
                                 most_common = Counter(plate_buffer).most_common(1)[0][0]
                                 plate_buffer.clear()
 
-                                if is_payment_complete(most_common):
+                                # Validate car in DB
+                                if not is_vehicle_registered(most_common):
+                                    print(f"[ERROR] Plate {most_common} NOT found in system.")
+                                    if arduino:
+                                        arduino.write(b'2')
+                                        print("[ALERT] Warning (plate not in system)")
+                                        time.sleep(2)
+                                        arduino.write(b'0')
+                                    continue
+
+                                # Check if car already exited
+                                if has_already_exited(most_common):
+                                    print(f"[DENIED] Car with plate {most_common} already exited.")
+                                    if arduino:
+                                        arduino.write(b'2')
+                                        print("[ALERT] Already exited")
+                                        time.sleep(2)
+                                        arduino.write(b'0')
+                                    continue
+
+                                # Check payment
+                                if check_payment_status(most_common):
                                     print(f"[ACCESS GRANTED] Payment complete for {most_common}")
-                                    if arduino:
-                                        arduino.write(b'1')  # Open gate
-                                        print("[GATE] Opening gate (sent '1')")
-                                        time.sleep(15)
-                                        arduino.write(b'0')  # Close gate
-                                        print("[GATE] Closing gate (sent '0')")
+                                    if log_exit(most_common):
+                                        if arduino:
+                                            arduino.write(b'1')  # Open gate
+                                            print("[GATE] Opening gate (sent '1')")
+                                            time.sleep(15)
+                                            arduino.write(b'0')  # Close gate
+                                            print("[GATE] Closing gate (sent '0')")
                                 else:
-                                    print(f"[ACCESS DENIED] Payment NOT complete for {most_common}")
+                                    # Payment NOT complete, trigger alert, log exit, and open gate
+                                    print(f"[ALERT - UNPAID] Payment NOT complete for {most_common}. Logging exit and opening gate.")
                                     if arduino:
-                                        arduino.write(b'2')  # Trigger warning buzzer
-                                        print("[ALERT] Buzzer triggered (sent '2')")
+                                        arduino.write(b'2') # Trigger alert
+                                        print("[ALERT] Payment not complete - Triggering buzzer")
+                                        time.sleep(2) # Keep buzzer on for 2 seconds
+                                        arduino.write(b'0') # Turn buzzer off
+                                        
+                                    if log_exit(most_common):
+                                        if arduino:
+                                            arduino.write(b'1')  # Open gate
+                                            print("[GATE] Opening gate (sent '1')")
+                                            time.sleep(15)
+                                            arduino.write(b'0')  # Close gate
+                                            print("[GATE] Closing gate (sent '0')")
+                                    else:
+                                        print(f"[ERROR] Failed to log exit for {most_common} (unpaid).")
 
                 cv2.imshow("Plate", plate_img)
                 cv2.imshow("Processed", thresh)

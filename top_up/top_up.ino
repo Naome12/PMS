@@ -28,12 +28,12 @@ void loop() {
 
   // Data to write
   byte plateBlock[16] = {0};  // Initialize array with zeroes
-  String plate = "RAH972U";  // Plate to write to block 2
+  String plate = "RAD667J";  // Plate to write to block 2
   
   // Copy plate string into plateBlock
   plate.getBytes(plateBlock, plate.length() + 1);  
 
-  int balance = 6000;
+  int balance = 20000;
   byte balanceBlock[16] = {0};
   memcpy(balanceBlock, &balance, sizeof(int)); // Write integer balance as bytes
 

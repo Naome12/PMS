@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking System Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <h1 class="text-3xl font-bold text-gray-900">Parking System Dashboard</h1>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Current Vehicles</dt>
+                                    <dd class="text-3xl font-semibold text-gray-900" id="current-vehicles">-</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                </svg>
+                            </div>
+                             <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Entries</dt>
+                                    <dd class="text-3xl font-semibold text-gray-900" id="total-entries">-</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Today's Revenue</dt>
+                                    <dd class="text-3xl font-semibold text-gray-900" id="today-revenue">-</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
+                                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Unauthorized Exits</dt>
+                                    <dd class="text-3xl font-semibold text-gray-900" id="unauthorized-exits">-</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Current Vehicles -->
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-4 py-5 sm:px-6">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Current Vehicles</h3>
+                    </div>
+                    <div class="border-t border-gray-200">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plate Number</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entry Time</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="vehicles-table">
+                                    <!-- Vehicle rows will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activities -->
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-4 py-5 sm:px-6">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Activities</h3>
+                    </div>
+                    <div class="border-t border-gray-200">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plate Number</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entry Time</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exit Time</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Paid</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="activities-table">
+                                    <!-- Activity rows will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts Section -->
+            <div class="mt-6">
+                <div class="bg-white shadow rounded-lg">
+                    <div class="px-4 py-5 sm:px-6">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Alerts</h3>
+                    </div>
+                    <div class="border-t border-gray-200">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plate Number</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entry Time</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exit Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="alerts-table">
+                                    <!-- Alert rows will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Connect to WebSocket
+        const socket = io();
+
+        // Format date for display
+        function formatDate(dateString) {
+            console.log('Received dateString:', dateString); // Log the input
+            if (!dateString) {
+                console.log('dateString is null or empty, returning -');
+                return '-';
+            }
+            
+            // Assuming the dateString format is 'YYYY-MM-DD HH:MM:SS.microseconds'
+            // We need to parse this manually to avoid timezone issues
+            const parts = dateString.split(' ');
+            if (parts.length < 2) {
+                 console.error('Unexpected dateString format (missing space):', dateString);
+                 return dateString; // Return original string if format is unexpected
+            }
+            const dateParts = parts[0].split('-');
+             if (dateParts.length < 3) {
+                 console.error('Unexpected dateString format (missing date parts):', dateString);
+                 return dateString; // Return original string if format is unexpected
+            }
+            
+            const timePartsWithMicroseconds = parts[1].split('.');
+            const timeParts = timePartsWithMicroseconds[0].split(':');
+             if (timeParts.length < 3) {
+                 console.error('Unexpected dateString format (missing time parts):', dateString);
+                 return dateString; // Return original string if format is unexpected
+            }
+
+            const year = dateParts[0];
+            const month = dateParts[1];
+            const day = dateParts[2];
+            const hours = timeParts[0];
+            const minutes = timeParts[1];
+            const seconds = timeParts[2];
+
+            // Format as MM/DD/YYYY, HH:MM:SS (24-hour format to match database output)
+            const formattedString = `${month}/${day}/${year}, ${hours}:${minutes}:${seconds}`;
+            console.log('Formatted dateString:', formattedString); // Log the output
+            return formattedString;
+        }
+
+        // Update stats
+        function updateStats() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('current-vehicles').textContent = data.current_vehicles;
+                    document.getElementById('total-entries').textContent = data.total_entries;
+                    document.getElementById('today-revenue').textContent = data.today_revenue + ' RWF';
+                    document.getElementById('unauthorized-exits').textContent = data.unauthorized_exits_count;
+                    
+                    // Update vehicles table (shows vehicles currently inside)
+                    const vehiclesTable = document.getElementById('vehicles-table');
+                    vehiclesTable.innerHTML = '';
+                    data.recent_activities
+                        .filter(activity => !activity.exit_time) // Filter for vehicles still inside
+                        .forEach(vehicle => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${vehicle.plate_number}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(vehicle.entry_time)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${vehicle.payment_status ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                        ${vehicle.payment_status ? 'Paid' : 'Unpaid'}
+                                    </span>
+                                </td>
+                            `;
+                            vehiclesTable.appendChild(row);
+                        });
+
+                    // Update recent activities table (shows recent entries and exits)
+                    const activitiesTable = document.getElementById('activities-table');
+                    activitiesTable.innerHTML = '';
+                    data.recent_activities.forEach(activity => {
+                        const row = document.createElement('tr');
+                        let amountPaid = activity.paid_amount !== null ? activity.paid_amount : '-';
+
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${activity.plate_number}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(activity.entry_time)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(activity.exit_time)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${activity.exit_time === null ? 'bg-blue-100 text-blue-800' : (activity.payment_status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}">
+                                    ${activity.exit_time === null ? 'Entry' : (activity.payment_status ? 'Paid Exit' : 'Unpaid Exit')}
+                                </span>
+                            </td>
+                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${amountPaid}</td>
+                        `;
+                        activitiesTable.appendChild(row);
+                    });
+                });
+        }
+
+        // Update alerts
+        function updateAlerts() {
+            fetch('/api/alerts')
+                .then(response => response.json())
+                .then(alerts => {
+                    // The unauthorized exits count is now in the stats endpoint, so no need to update it here
+                    
+                    const alertsTable = document.getElementById('alerts-table');
+                    alertsTable.innerHTML = '';
+                    alerts.forEach(alert => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${alert.plate_number}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(alert.entry_time)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(alert.exit_time)}</td>
+                        `;
+                        alertsTable.appendChild(row);
+                    });
+                });
+        }
+
+        // Handle real-time updates
+        socket.on('parking_event', function(data) {
+            updateStats();
+            updateAlerts();
+        });
+
+        // Initial load
+        updateStats();
+        updateAlerts();
+
+        // Refresh data every 30 seconds
+        setInterval(() => {
+            updateStats();
+            updateAlerts();
+        }, 30000);
+    </script>
+</body>
+</html> 
